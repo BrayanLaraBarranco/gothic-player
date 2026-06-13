@@ -1,0 +1,40 @@
+# ── Buildozer ──────────────────────────────────────────────────────────────────
+.buildozer/
+bin/
+build.log
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+venv/
+.venv/
+env/
+
+# ── Datos de usuario (no subir al repo) ───────────────────────────────────────
+MusicPlayerGothic/
+*.json
+# Excepto si hay JSONs de configuración que SÍ quieres versionar:
+!assets/**/*.json
+
+# ── Archivos de media generados ────────────────────────────────────────────────
+assets/covers/
+*.jpg
+*.jpeg
+*.png
+# Excepto assets de la app:
+!assets/**/*.png
+!assets/**/*.jpg
+
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ────────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,131 @@
+name: Build APK — Gothic Player Pro
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      # ── 2. Python 3.10 ────────────────────────────────────────────────────
+      - name: Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # ── 3. Java 17 ────────────────────────────────────────────────────────
+      - name: Java 17
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq openjdk-17-jdk
+          JAVA_HOME_PATH=$(dirname "$(dirname "$(readlink -f "$(which java)")")")
+          echo "JAVA_HOME=$JAVA_HOME_PATH" >> $GITHUB_ENV
+          echo "$JAVA_HOME_PATH/bin"       >> $GITHUB_PATH
+
+      # ── 4. Dependencias del sistema ────────────────────────────────────────
+      - name: Dependencias del sistema
+        run: |
+          sudo apt-get install -y -qq \
+            git zip unzip wget curl \
+            autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libffi-dev libssl-dev \
+            libjpeg-dev libpng-dev libtiff-dev \
+            build-essential lld ccache \
+            libgstreamer1.0-dev gstreamer1.0-plugins-base \
+            python3-dev
+
+      # ── 5. Caché pip ───────────────────────────────────────────────────────
+      - name: Caché pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      # ── 6. Instalar buildozer + Cython ─────────────────────────────────────
+      - name: Instalar buildozer
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install "buildozer>=1.5.0" "cython==0.29.33"
+
+      # ── 7. Caché SDK/NDK (~/.buildozer) ────────────────────────────────────
+      # Clave basada en buildozer.spec para invalidar cuando cambian versiones
+      - name: Caché ~/.buildozer
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-${{ runner.os }}-
+
+      # ── 8. Caché ccache (acelera recompilaciones C) ────────────────────────
+      - name: Caché ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+
+      # ── 9. Aceptar licencias SDK ───────────────────────────────────────────
+      - name: Aceptar licencias Android SDK
+        run: |
+          SDK="$HOME/.buildozer/android/platform/android-sdk"
+          if [ -d "$SDK/cmdline-tools/latest/bin" ]; then
+            yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || true
+          fi
+
+      # ── 10. Compilar APK ───────────────────────────────────────────────────
+      - name: Compilar APK debug
+        env:
+          USE_SDK_WRAPPER: 1
+        run: |
+          # Mostrar versiones para debug
+          python --version
+          buildozer --version
+          java -version 2>&1 | head -1
+
+          # Compilar
+          buildozer -v android debug 2>&1 | tee build.log
+
+          # Verificar resultado
+          if ls bin/*.apk 1>/dev/null 2>&1; then
+            echo ""
+            echo "✓ APK generado:"
+            ls -lh bin/*.apk
+          else
+            echo ""
+            echo "✗ No se generó APK. Últimas 100 líneas del log:"
+            tail -100 build.log
+            exit 1
+          fi
+
+      # ── 11. Subir APK ──────────────────────────────────────────────────────
+      - name: Subir APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gothic-player-pro-apk
+          path: bin/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      # ── 12. Subir log (siempre) ────────────────────────────────────────────
+      - name: Subir log de compilación
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
+          if-no-files-found: ignore

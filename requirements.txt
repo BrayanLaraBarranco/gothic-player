@@ -1,0 +1,12 @@
+buildozer>=1.5.0
+cython==0.29.33
+kivy==2.3.0
+pillow
+mutagen
+yt-dlp
+requests
+certifi
+urllib3
+charset-normalizer
+idna
+ffpyplayer
