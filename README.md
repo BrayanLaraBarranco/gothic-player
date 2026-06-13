@@ -178,3 +178,4 @@ requests >= 2.31       # HTTP para thumbnails
 ---
 
 *♦ Gothic Edition — Oscuridad refinada, música eterna ♦*
+"# gothic-player-pro" 
